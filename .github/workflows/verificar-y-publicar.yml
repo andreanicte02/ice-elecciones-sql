@@ -1,0 +1,62 @@
+name: Verify on SQL Server and publish
+
+# Runs the original 2018 T-SQL on a real SQL Server 2022, the SQLite port and the
+# 2026 rewrites, checks they all agree, and publishes the site with SQL Server's
+# results. Pull requests only verify.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: The CSV is exactly what the generator produces
+        run: python data/generar_datos.py | cmp - data/ICE-Fuente.csv
+
+      - name: Start SQL Server 2022
+        run: |
+          mkdir -p build
+          docker run -d --name mssql -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=Bases-2018!" \
+            -p 1433:1433 -v "$PWD/build:/data:ro" mcr.microsoft.com/mssql/server:2022-latest
+          for i in $(seq 60); do
+            docker logs mssql 2>&1 | grep -q "ready for client connections" && exit 0
+            sleep 2
+          done
+          docker logs mssql; exit 1
+
+      - run: pip install pymssql
+      - name: Run and compare every query
+        run: python tests/verificar.py --sqlserver localhost --json build/resultados.json
+
+      - run: python scripts/build_site.py site --resultados build/resultados.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
