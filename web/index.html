@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ICE Elecciones SQL</title>
+  <meta name="description" content="Proyecto de Bases de Datos 1 (USAC, 2018): normalización de una hoja electoral y 14 consultas SQL, ejecutables en el navegador.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="wrap hero">
+    <p class="eyebrow">SQL Server · SQLite · normalización</p>
+    <h1>Instituto Centroamericano Electoral</h1>
+    <p class="lede">
+      Proyecto de Bases de Datos 1 (USAC, 2018): una hoja de Excel con resultados electorales sin normalizar,
+      convertida en un modelo relacional de 10 tablas y consultada con 14 reportes en SQL. Todo corre aquí,
+      en tu navegador, con SQLite compilado a WebAssembly.
+    </p>
+    <p class="links">
+      <a class="btn" href="https://github.com/andreanicte02/ice-elecciones-sql">Ver código</a>
+      <a class="btn ghost" href="#consultas">Ir a las consultas</a>
+    </p>
+    <aside class="notice">
+      <strong>Datos sintéticos.</strong> El archivo original del curso ya no existe, así que los datos se
+      generaron con la misma estructura: lugares reales de Centroamérica, pero partidos y votos inventados.
+      No representan ninguna elección real.
+    </aside>
+  </header>
+
+  <main class="wrap">
+    <!-- 1 ------------------------------------------------------------------------------------>
+    <section class="card" id="hoja">
+      <p class="num">01</p>
+      <h2>La hoja de Excel, sin normalizar</h2>
+      <p>
+        El instituto exportó todo a una sola tabla: cada fila repite el país, la región, el departamento, el
+        municipio, el partido y la elección, y guarda los votantes en cinco columnas a la vez (analfabetas,
+        alfabetas y, de los alfabetas, primaria, nivel medio y universitario).
+      </p>
+      <p class="hint" id="hojaInfo">Cargando…</p>
+      <div class="tablewrap short"><table id="hojaTabla"></table></div>
+    </section>
+
+    <!-- 2 ------------------------------------------------------------------------------------>
+    <section class="card" id="modelo">
+      <p class="num">02</p>
+      <h2>Normalización: 10 tablas</h2>
+      <p>
+        El script de carga de 2018 llena una tabla temporal con la hoja y la reparte en el modelo: la jerarquía
+        <code>pais → region → departamento → municipio</code>, catálogos para partido, elección, género, raza y
+        tipo de votante, y una tabla <code>voto</code> donde cada fila de la hoja se convierte en cinco votos,
+        uno por tipo de votante. Ese mismo script se acaba de ejecutar en tu navegador casi sin cambios.
+      </p>
+      <div class="model">
+        <figure>
+          <img src="er.png" alt="Diagrama entidad-relación de 2018: voto se relaciona con eleccion, partido, genero, raza, tipovotante y municipio; municipio con departamento, region y pais." width="842" height="520">
+          <figcaption>Diagrama entidad-relación original (Oracle SQL Developer Data Modeler, 2018).</figcaption>
+        </figure>
+        <div>
+          <p class="tlabel">Filas por tabla después de la carga</p>
+          <dl class="counts" id="conteos"></dl>
+          <p class="sub" id="cargaInfo"></p>
+          <details class="code">
+            <summary>Ver el script de carga</summary>
+            <pre><code id="cargaSql"></code></pre>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 ------------------------------------------------------------------------------------>
+    <section id="consultas">
+      <div class="sechead">
+        <p class="num">03</p>
+        <h2>Las 14 consultas</h2>
+        <p>
+          Cada consulta tiene dos versiones. <b>2018</b> es el código original (T-SQL), ejecutado aquí en SQLite;
+          el único cambio fue <code>TOP 1</code> → <code>LIMIT 1</code>. <b>2026</b> es la misma pregunta
+          reescrita con CTEs, funciones de ventana y una vista, <code>voto_detalle</code>, que reúne todos los
+          joins. Puedes editar cualquiera y volver a ejecutarla.
+        </p>
+        <p class="hint" id="verificado"></p>
+      </div>
+      <div id="lista"></div>
+    </section>
+
+    <!-- 4 ------------------------------------------------------------------------------------>
+    <section class="card" id="consola">
+      <p class="num">04</p>
+      <h2>Consola SQL</h2>
+      <p>Escribe tu propia consulta. Tablas: <code>pais</code>, <code>region</code>, <code>departamento</code>,
+        <code>municipio</code>, <code>partido</code>, <code>eleccion</code>, <code>genero</code>, <code>raza</code>,
+        <code>tipovotante</code>, <code>voto</code> y la vista <code>voto_detalle</code>.</p>
+      <textarea id="libre" spellcheck="false" aria-label="Consulta SQL">SELECT pais, SUM(cantidad) AS votantes
+FROM voto_detalle
+WHERE tipovotante_id >= 4
+GROUP BY pais
+ORDER BY votantes DESC;</textarea>
+      <div class="runbar"><button type="button" class="run" id="libreRun">Ejecutar</button><span class="meta" id="libreMeta"></span></div>
+      <div class="result" id="libreOut"></div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Por <a href="https://github.com/andreanicte02">Andrea Nicte Vicente Campos</a> · Bases de Datos 1, USAC, 2018.
+    Rescatado en 2026 con datos sintéticos, verificación contra SQL Server 2022 y las consultas reescritas.
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
